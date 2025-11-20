@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-model = VAE(input_dim=28*28, hidden_dim=256, latent_dim=2, device=device, beta=1.0, lr=1e-3)
+model = VAE(input_dim=28*28, hidden_dim=256, latent_dim=10, device=device, beta=5.0, lr=1e-3)
 
 # Prepare MNIST dataloader (flattened)
 transform = transforms.Compose([

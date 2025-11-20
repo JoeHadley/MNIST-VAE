@@ -98,53 +98,29 @@ class VAE(nn.Module):
     kl = torch.mean(kl_per_sample)
     return self.beta * kl
 
-  def reconstruction_loss(self, recon, x, reduction='mean'):
+  def reconstruction_loss(self, recon, x):
+    # , reduction='mean'
     """
     MSE reconstruction loss. Use reduction='sum' or 'mean'
     recon and x shapes: (batch_size, input_dim)
     """
     # you can swap to BCE if input in [0,1] and you prefer that.
-    mse = nn.functional.mse_loss(recon, x, reduction=reduction)
-    return mse
+    # mse = nn.functional.mse_loss(recon, x, reduction=reduction)
+    bce = nn.functional.binary_cross_entropy_with_logits(recon, x, reduction='mean')
+    return bce
 
   def compute_loss(self, x, recon, mean, logvar, recon_reduction='mean'):
     """
     Combined loss: recon + beta * KL
     returns: total_loss, recon_loss, kl_loss
     """
-    recon_loss = self.reconstruction_loss(recon, x, reduction=recon_reduction)
+    recon_loss = self.reconstruction_loss(recon, x)
+    #recon_loss = self.reconstruction_loss(recon, x, reduction=recon_reduction)
     kl_loss = self.computeKLLoss(mean, logvar)
     # If recon_reduction == 'mean', both are comparable; else you might want to scale.
     total = recon_loss + kl_loss
     return total, recon_loss, kl_loss
 
-  def log_prior(self, z, mu0=0.0, sigma0=1.0):
-    """
-    Log prior p(z) assuming isotropic Gaussian N(mu0, sigma0^2).
-    Returns sum log p(z) over batch (scalar).
-    """
-    var0 = sigma0**2
-    d = z.shape[1]
-    log_const = -0.5 * d * torch.log(2 * torch.pi * var0)
-    quad = -0.5 * torch.sum((z - mu0)**2, dim=1) / var0
-    return torch.mean(log_const + quad)
-    
-  def log_likelihood(self,phi, data, sigma_y):
-    """
-    Gaussian likelihood: p(data | phi) = N(data | g(phi), sigma_y^2 I)
-    - forward_model(phi): predicts mean of data given phi
-    """
-    
-    pred = self.forward(phi)  # Forward pass to get predictions
-
-    
-    var_y = sigma_y**2
-    diff = data - pred
-    d = data.shape[0]
-    log_term = torch.log(torch.tensor(2.0 * torch.pi * var_y, device=diff.device))
-    logl = -0.5 * (d * log_term + (diff ** 2).sum() / var_y)
-    return logl
-  
   def step(self, x):
     """
     One optimization step on batch x (expects x already on correct device)
